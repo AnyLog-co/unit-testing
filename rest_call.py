@@ -1,4 +1,5 @@
 import json
+import random
 import requests
 
 def execute_request(func:str, conn:str, headers:dict, payload:str=None):
@@ -17,7 +18,7 @@ def execute_request(func:str, conn:str, headers:dict, payload:str=None):
     return response
 
 
-def put_data(conn:str, payload:list, dbms:str, table:str, batch:bool=False):
+def put_data(conn:str, payload:str, dbms:str, table:str):
     headers = {
         'type': 'json',
         'dbms': dbms,
@@ -26,11 +27,7 @@ def put_data(conn:str, payload:list, dbms:str, table:str, batch:bool=False):
         'Content-Type': 'text/plain'
     }
 
-    if batch:
-        execute_request(func='PUT', conn=conn, headers=headers, payload=json.dumps(payload))
-    else:
-        for row in payload:
-            execute_request(func='PUT', conn=conn, headers=headers, payload=json.dumps(row))
+    execute_request(func='PUT', conn=conn, headers=headers, payload=payload)
 
 
 def get_data(conn:str, query:str, destination:str='network'):

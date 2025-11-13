@@ -7,11 +7,15 @@ from contextlib import contextmanager
 
 ROOT_DIR = os.path.dirname(__file__)
 
-class TestPowerPlantData(unittest.TestCase):
-    def setUp(self, conn:str='172.23.160.85:32149', db_name='new_company'):
-        self.conn = conn
-        self.db_name = db_name
-        self.query_base = f"sql {db_name} format=json and stat=false"
+class TestSQLCommands(unittest.TestCase):
+    conn = None
+    db_name = None
+
+    def setUp(self):
+        assert self.conn
+        assert self.db_name
+
+        self.query_base = f"sql {self.db_name} format=json and stat=false"
 
         self.expect_dir = os.path.join(ROOT_DIR, 'expect')
         support.create_dir(self.expect_dir)
@@ -256,14 +260,4 @@ class TestPowerPlantData(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    # parse = argparse.ArgumentParser()
-    # parse.add_argument('--insert-only',type=bool, nargs='?', const=True, default=False,  help="Only insert data")
-    # parse.add_argument('--skip-query', type=bool, nargs='?', const=True, default=False, help="Skip queries")
-    # args = parse.parse_args()
-    # parse.add_argument('--query', required=False if args.skip_query else True, type=str, default=None, help="Query node IP:port")
-    # parse.add_argument('--operator', required=args.insert_only, type=bool,  default=None, help="(comma separated) Operator node IP:port")
-    # parse.add_argument('--db-name', required=True, type=str, default='new_company', help="Logical database name")
-    # args = parse.parse_args()
-
-
-    unittest.main(verbosity=2, )
+    unittest.main(verbosity=2)
