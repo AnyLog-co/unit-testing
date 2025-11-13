@@ -24,10 +24,10 @@ def _sort_data(records:list)->list:
 
 
 
-def insert_data(conn:str, db_name:str, sort_timestamps:bool=False, batch:bool=False):
+def insert_data(conn:list, db_name:str, sort_timestamps:bool=False, batch:bool=False):
     global CONNS
     global LAST_CONN
-    CONNS = conn.split(",")
+    CONNS = conn
 
     for fname in DATA_FILES:
         if not os.path.isfile(fname):
@@ -70,4 +70,4 @@ if __name__ == '__main__':
     parse.add_argument('--batch', type=bool, nargs='?', const=True, default=False, help='Insert a single data in batch')
     args = parse.parse_args()
 
-    insert_data(conn=args.conn, db_name=args.db_name, sort_timestamps=args.sort_Timestmaps, batch=args.batch)
+    insert_data(conn=args.conn.split(","), db_name=args.db_name, sort_timestamps=args.sort_Timestmaps, batch=args.batch)

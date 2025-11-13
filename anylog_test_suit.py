@@ -7,24 +7,29 @@ from insert_data import insert_data
 from test_sql_queries import TestSQLCommands
 from test_anylog_cli import TestAnyLogCommands
 
-def anylog_test(query_conn:str, db_name:str):
+def anylog_test(query_conn:str, operator_conn:str, db_name:str, test_name:str, verbose:int=2):
     TestAnyLogCommands.query = query_conn
-    TestAnyLogCommands.operator = query_conn.split(",")
+    TestAnyLogCommands.operator = operator_conn
     TestAnyLogCommands.db_name = db_name
 
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAnyLogCommands)
-    runner = unittest.TextTestRunner(verbosity=2)
+    if test_name:
+        suite = unittest.TestLoader().loadTestsFromName(test_name, TestAnyLogCommands)
+
+    runner = unittest.TextTestRunner(verbosity=verbose)
     result = runner.run(suite)
     if not result.wasSuccessful():
         sys.exit(1)
 
 
-def sql_test(query_conn:str, db_name:str):
+def sql_test(query_conn:str, db_name:str, test_name:str=None, verbose:int=2):
     TestSQLCommands.conn = query_conn
     TestSQLCommands.db_name = db_name
 
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSQLCommands)
-    runner = unittest.TextTestRunner(verbosity=2)
+    if test_name:
+        suite = unittest.TestLoader().loadTestsFromName(test_name,TestSQLCommands)
+    runner = unittest.TextTestRunner(verbosity=verbose)
     result = runner.run(suite)
     if not result.wasSuccessful():
         sys.exit(1)
@@ -40,8 +45,11 @@ def main():
     parse.add_argument('--db-name', required=True, type=str, help="Logical database name")
     parse.add_argument('--sort-timestamps', action='store_true', help='Insert values in chronological order')
     parse.add_argument('--batch', action='store_true', help='Insert a single data batch')
+    parse.add_argument('--verbose', type=int, default=2, help="Test verbosity level (0, 1, 2)")
+    parse.add_argument('--select-test', type=str, default=None, help="(comma separated) specific test(s) to run")
     args = parse.parse_args()
 
+    args.operator = args.operator.split(",")
     # insert data
     if not args.skip_insert:
         insert_data(conn=args.operator, db_name=args.db_name, sort_timestamps=args.sort_timestamp)
@@ -54,8 +62,21 @@ def main():
     # run query test
     if not args.skip_test:
         # run tests:
-        sql_test(query_conn=args.query, db_name=args.db_name)
-        anylog_test(query_conn=args.query, db_name=args.db_name)
+        if not args.select_test:
+            anylog_test(query_conn=args.query, db_name=args.db_name)
+            sql_test(query_conn=args.query, db_name=args.db_name)
+        else:
+            for test_case in args.select_test.strip().split(","):
+                test_name = None
+                if '.' in test_case:
+                    test_case, test_name = test_case.split(".")
+
+                if test_case == 'anylog':
+                    anylog_test(query_conn=args.query, operator_conn=args.operator, db_name=args.db_name,
+                                test_name=test_name, verbose=args.verbose)
+                if test_case == "sql":
+                    sql_test(query_conn=args.query, db_name=args.db_name, test_name=test_name, verbose=args.verbose)
+
 
 
 
