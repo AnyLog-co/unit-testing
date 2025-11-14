@@ -3,6 +3,7 @@ import unittest
 
 from rest_call import get_data
 from contextlib import contextmanager
+import random
 
 ROOT_DIR = os.path.dirname(__file__)
 
@@ -29,18 +30,32 @@ class TestAnyLogCommands(unittest.TestCase):
 
     def test_get_status(self):
         command = "get status where format=json"
-        # Optionally add assertions
-        conns = self.operator
-        conns.append(self.query)
-
-        for conn  in conns:
-            results = get_data(conn, command, destination="")
+        if not self.operator and not self.query:
+            self.skipTest("Mising connection information for operator and query")
+        if self.operator:
+            if self.assertIsInstance(self.operator, list):
+                for conn in self.operator:
+                    results = get_data(conn, command, destination="")
+                    with self.query_context(command):
+                        self.assertIn("Status", results.json())
+                        data = results.json()
+                        assert 'running' in data.get('Status') and 'not running' not in data.get('Status')
+            elif isinstance(self.operator, str):
+                results = get_data(self.operator, command, destination="")
+                with self.query_context(command):
+                    self.assertIn("Status", results.json())
+                    data = results.json()
+                    assert 'running' in data.get('Status') and 'not running' not in data.get('Status')
+        if self.query:
+            results = get_data(self.query, command, destination="")
             with self.query_context(command):
                 self.assertIn("Status", results.json())
                 data = results.json()
                 assert 'running' in data.get('Status') and 'not running' not in data.get('Status')
 
     def test_operator_databases(self):
+        if not self.operator:
+            self.skipTest("Mising connection information for operator")
         command = "get databases where format=json"
         for conn in self.operator:
             result = get_data(conn, command, destination="")
@@ -49,12 +64,16 @@ class TestAnyLogCommands(unittest.TestCase):
                 self.assertIn('almgm', list(result.json().keys()))
 
     def test_system_query_database(self):
+        if not self.query:
+            self.skipTest("Mising connection information for query")
         command = "get databases where format=json"
         result = get_data(self.query, command, destination="")
         with self.query_context(command):
             self.assertIn("system_query", list(result.json().keys()))
 
     def test_operator_processes(self):
+        if not self.operator:
+            self.skipTest("Mising connection information for operator")
         command = "get processes where format=json"
         for conn in self.operator:
             result = get_data(conn, command, destination="")
@@ -66,6 +85,8 @@ class TestAnyLogCommands(unittest.TestCase):
                     self.assertIn('Running', data.get(key).get('Status'))
 
     def test_query_processes(self):
+        if not self.query:
+            self.skipTest("Mising connection information for query")
         command = "get processes where format=json"
         result = get_data(self.query, command, destination="")
         with self.query_context(command):
@@ -76,8 +97,18 @@ class TestAnyLogCommands(unittest.TestCase):
                 self.assertIn('Running', data.get(key).get('Status'))
 
     def test_check_tables(self):
+        if not self.operator and not self.query:
+            self.skipTest("Mising connection information for operator and query")
+        elif not self.query and self.operator:
+            if isinstance(self.operator, list):
+                conn =  random.chocie(self.operator)
+            else:
+                conn = self.operator
+        else:
+            conn = self.query
+
         command = f"get data nodes where format=json and dbms={self.db_name}"
-        result = get_data(self.query, command, destination="")
+        result = get_data(conn, command, destination="")
         data = result.json()
         with self.query_context(command):
             self.assertGreater(len(data), 0)
@@ -88,6 +119,16 @@ class TestAnyLogCommands(unittest.TestCase):
                 assert row.get('Table') in ['rand_data', 'power_plant', 'power_plant_pv']
 
     def test_table_columns(self):
+        if not self.operator and not self.query:
+            self.skipTest("Mising connection information for operator and query")
+        elif not self.query and self.operator:
+            if isinstance(self.operator, list):
+                conn = random.chocie(self.operator)
+            else:
+                conn = self.operator
+        else:
+            conn = self.query
+
         expected = {
             'rand_data': {
                 'row_id': 'integer', 'insert_timestamp': 'timestamp without time zone', 'tsd_name': 'char(3)',
@@ -120,7 +161,7 @@ class TestAnyLogCommands(unittest.TestCase):
 
         for table, columns in expected.items():
             command = f"get columns where dbms={self.db_name} and table={table} and format=json"
-            result = get_data(self.query, command, destination="")
+            result = get_data(conn, command, destination="")
             actual = result.json()
 
             with self.query_context(command):

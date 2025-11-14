@@ -7,6 +7,30 @@ from insert_data import insert_data
 from test_sql_queries import TestSQLCommands
 from test_anylog_cli import TestAnyLogCommands
 
+def _list_methods(cls_name):
+    list_methods = []
+    for tname in unittest.TestLoader().loadTestsFromTestCase(cls_name):
+        list_methods.append(tname._testMethodName)
+    return list_methods
+
+
+def _print_test_cases():
+    test_cases = {
+        'anylog': _list_methods(TestAnyLogCommands),
+        'sql': _list_methods(TestSQLCommands)
+    }
+
+    # Find the longest "key:" length (including colon)
+    longest = max(len(name) + 1 for name in test_cases)  # +1 for colon
+
+    lines = []
+    for tname, tests in test_cases.items():
+        key = f"{tname}:"
+        padded = key.ljust(longest)  # pad after colon so lists align
+        lines.append(f"\n  - {padded}  {', '.join(tests)}")
+
+    return "".join(lines)
+
 def anylog_test(query_conn:str, operator_conn:str, db_name:str, test_name:str, verbose:int=2):
     TestAnyLogCommands.query = query_conn
     TestAnyLogCommands.operator = operator_conn
@@ -36,17 +60,30 @@ def sql_test(query_conn:str, db_name:str, test_name:str=None, verbose:int=2):
 
 
 def main():
-    parse = argparse.ArgumentParser()
-    parse.add_argument('--skip-insert', action='store_true', help="Skip data insertion")
-    parse.add_argument('--skip-test', action='store_true', help="Skip running unit tests")
-    parse.add_argument('--skip-query', action='store_true', help="Skip queries")
-    parse.add_argument('--query', type=str, required=False, help="Query node IP:port")
-    parse.add_argument('--operator', type=str, required=False, help="Comma-separated operator node IPs")
-    parse.add_argument('--db-name', required=True, type=str, help="Logical database name")
-    parse.add_argument('--sort-timestamps', action='store_true', help='Insert values in chronological order')
-    parse.add_argument('--batch', action='store_true', help='Insert a single data batch')
-    parse.add_argument('--verbose', type=int, default=2, help="Test verbosity level (0, 1, 2)")
-    parse.add_argument('--select-test', type=str, default=None, help="(comma separated) specific test(s) to run")
+    """
+    :required options:
+        --query     QUERY       Query node IP:port
+        --operator  OPERATOR    Comma-separated operator node IPs
+        --db-name   DB_NAME     Logical database name
+    :options:
+        -h, --help            show this help message and exit
+        --sort-timestamps   [SORT_TIMESTAMPS]   Insert values in chronological order
+        --batch             [BATCH]             Insert a single data batch
+        --skip-insert       [SKIP_INSERT]       Skip data insertion
+        --skip-test         [SKIP_TEST]         Skip running unit tests
+        --verbose           VERBOSE             Test verbosity level (0, 1, 2)
+        --select-test       SELECT_TEST         (comma separated) specific test(s) to run
+    """
+    parse = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, epilog=f"\nList of Tests {_print_test_cases()}")
+    parse.add_argument('--query',           required=False, type=str,                         default=None, help="Query node IP:port")
+    parse.add_argument('--operator',        required=False, type=str,                         default=None, help="Comma-separated operator node IPs")
+    parse.add_argument('--db-name',         required=False, type=str,                         default=None, help="Logical database name")
+    parse.add_argument('--sort-timestamps', required=False, type=bool, nargs='?', const=True, default=False, help='Insert values in chronological order')
+    parse.add_argument('--batch',           required=False, type=bool, nargs='?', const=True, default=False, help='Insert a single data batch')
+    parse.add_argument('--skip-insert',     required=False, type=bool,  nargs='?', const=True, default=False, help="Skip data insertion")
+    parse.add_argument('--skip-test',       required=False, type=bool, nargs='?', const=True, default=False, help="Skip running unit tests")
+    parse.add_argument('--verbose',         required=False, type=int,                         default=2,     help="Test verbosity level (0, 1, 2)")
+    parse.add_argument('--select-test',     required=False, type=str,                         default=None, help="(comma separated) specific test(s) to run")
     args = parse.parse_args()
 
     args.operator = args.operator.split(",")
