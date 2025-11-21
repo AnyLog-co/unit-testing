@@ -20,19 +20,13 @@ DATA = [
 def insert_data(conn:str, db_name:str):
     for row in DATA:
         rest_call.put_data(conn=conn, payload=json.dumps(row), dbms=db_name, table="t1")
-        if DATA.index(row) > 0:
-            time.sleep(0)
-    #     if DATA.index(row) == 1:
-    #         rest_call.execute_request(func="post", conn=self.operator,
-    #                                   headers={"command": "flush buffers", "User-Agent": "AnyLog/1.23"})
-    #         time.sleep(5)
-    # rest_call.execute_request(func="post", conn=self.operator,
-    #                           headers={"command": "flush buffers", "User-Agent": "AnyLog/1.23"})
-    # time.sleep(5)
+        if DATA.index(row) == 1:
+            rest_call.flush_buffer(conn=conn)
+    rest_call.flush_buffer(conn=conn)
 
 
 
-class TestInserts(unittest.TestCase):
+class TestNullData(unittest.TestCase):
     # Class variables to be set before running tests
     query = None
     operator = None
@@ -42,13 +36,10 @@ class TestInserts(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # Ensure required parameters are set
-        self.query = '172.23.160.85:32149'
-        self.operator = '172.23.160.85:32149'
-        self.db_name = 'new_company'
-        self.skip_insert = True
-        # assert self.query
-        # assert self.operator
-        # assert self.db_name
+        assert self.query
+        assert self.operator
+        assert self.db_name
+        assert self.skip_insert in [True, False]
 
         if not self.skip_insert:
             insert_data(conn=self.operator, db_name=self.db_name)

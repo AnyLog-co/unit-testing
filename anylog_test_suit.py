@@ -7,7 +7,8 @@ from source.insert_data import insert_data
 from tests.test_sql_queries import TestSQLCommands
 from tests.test_anylog_cli import TestAnyLogCommands
 from tests.test_blockchain_policies import TestBlockchainPolicies
-from source.rest_call import execute_request
+from tests.test_null_data import TestNullData
+from source.rest_call import flush_buffer
 
 def _list_methods(cls_name):
     list_methods = []
@@ -21,6 +22,7 @@ def _print_test_cases():
         'anylog':     _list_methods(TestAnyLogCommands),
         'blockchain': _list_methods(TestBlockchainPolicies),
         'sql':        _list_methods(TestSQLCommands),
+        'null_data': _list_methods(TestNullData)
     }
 
     # Find the longest "key:" length (including colon)
@@ -52,7 +54,7 @@ def _remove_skip_decorators(testcase_cls):
     testcase_cls.__init__ = new_init
 
 
-def anylog_test(query_conn: str, operator_conn: str, db_name:str, test_name:str, ignore_skip:bool=False, verbose:int=2):
+def anylog_test(query_conn:str, operator_conn:str, db_name:str, test_name:str, ignore_skip:bool=False, verbose:int=2):
     TestAnyLogCommands.query = query_conn
     TestAnyLogCommands.operator = operator_conn
     TestAnyLogCommands.db_name = db_name
@@ -132,6 +134,32 @@ def sql_test(query_conn:str, db_name:str, test_name:str=None, ignore_skip:bool=F
     # if not result.wasSuccessful():
     #     sys.exit(1)
 
+def null_data_test(query_conn:str, operator_conn:str, db_name:str, test_name:str, skip_insert:bool=False, ignore_skip:bool=False, verbose:int=2):
+    TestNullData.query = query_conn
+    TestNullData.operator = operator_conn
+    TestNullData.db_name = db_name
+    TestNullData.skip_insert = skip_insert
+
+    if ignore_skip:
+        _remove_skip_decorators(TestNullData)
+
+    loader = unittest.TestLoader()
+    suite_all = loader.loadTestsFromTestCase(TestNullData)
+
+    # Determine which tests to run
+    if not test_name:
+        wanted = {test._testMethodName for test in suite_all}
+    else:
+        wanted = {name.strip() for name in test_name.split(",")}
+
+    # Filter suite while keeping decorators like @skip
+    suite = unittest.TestSuite(
+        test for test in suite_all
+        if test._testMethodName in wanted
+    )
+
+    runner = unittest.TextTestRunner(verbosity=verbose)
+    result = runner.run(suite)
 
 def main():
     """
@@ -166,11 +194,7 @@ def main():
     # insert data
     if not args.skip_insert:
         insert_data(conns=args.operator, db_name=args.db_name, sort_timestamps=args.sort_timestamps)
-        for operator in args.operator:
-            execute_request(func='POST', conn=operator, headers={"command": "flush buffers", "User-Agent": "AnyLog/1.23"}, payload=None)
-        time.sleep(10)
-
-
+        flush_buffer(conn=args.operator)
 
     # run query test
     if not args.skip_test:
@@ -188,6 +212,11 @@ def main():
             sys.stdout.flush()
             time.sleep(0.5)
             sql_test(query_conn=args.query, db_name=args.db_name, test_name=args.select_test, ignore_skip=args.ignore_skip, verbose=args.verbose)
+            print("Testing Null or empty column values in data")
+            sys.stdout.flush()
+            time.sleep(0.5)
+            # null_data_test()
+
         else:
             for test_case in args.select_test.strip().split(","):
                 test_name = None

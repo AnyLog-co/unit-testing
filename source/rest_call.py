@@ -1,5 +1,4 @@
-import json
-import random
+import time
 import requests
 
 def execute_request(func:str, conn:str, headers:dict, payload:str=None):
@@ -41,4 +40,15 @@ def get_data(conn:str, query:str, destination:str='network'):
     return execute_request(func='GET', conn=conn, headers=headers, payload=None)
 
 
+def flush_buffer(conn:(str or list)):
+    """
+    Code to flush insert data buffers
+    """
+    headers = {"command": "flush buffers", "User-Agent": "AnyLog/1.23"}
+    if isinstance(conn, str):
+        execute_request(func='POST', conn=conn, headers=headers, payload=None)
+    else:
+        for con in conn:
+            execute_request(func='POST', conn=con, headers=headers, payload=None)
+    time.sleep(5)
 
