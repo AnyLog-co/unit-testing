@@ -173,22 +173,22 @@ class TestSQLCommands(unittest.TestCase):
                 self.assertEqual(actual_content, expect_content)
 
     def test_increments(self):
-        query = f'sql {self.db_name} format=table and stat=false "SELECT increments(%s, timestamp), min(timestamp)::ljust(19) as min_ts, max(timestamp)::ljust(19) as max_ts, min(value) as min_val, avg(value)::float(3) as avg_val, max(value) as max_val FROM rand_data ORDER BY max_ts ASC;"'
+        query = f'sql {self.db_name} format=table and stat=false "SELECT increments(%s, timestamp), min(timestamp)::ljust(19) as min_ts, max(timestamp)::ljust(19) as max_ts, min(value) as min_val, avg(value)::float(3) as avg_val, max(value) as max_val FROM rand_data ORDER BY min_ts, max_ts ASC;"'
         for increment in ['day, 1', 'day, 7', 'day, 30', 'day, 90', 'day, 180', 'day, 365', 'year, 1']:
+            with self.subTest(f"Increments - {increment}"):
+                fname = f"increments_{increment.strip().replace(' ', '').replace(',', '_')}.out"
+                results_file = os.path.join(self.actual_dir, fname)
+                expect_file = os.path.join(self.expect_dir, fname)
 
-            fname = f"increments_{increment.strip().replace(' ', '').replace(',', '_')}.out"
-            results_file = os.path.join(self.actual_dir, fname)
-            expect_file = os.path.join(self.expect_dir, fname)
+                results = get_data(self.conn, query % increment)
+                data = results.text
 
-            results = get_data(self.conn, query % increment)
-            data = results.text
-
-            support.write_file(results_file, data)
-            support.copy_file(results_file, expect_file)
-            actual_content = support.read_file(results_file)
-            expect_content = support.read_file(expect_file)
-
-            self.assertEqual(actual_content, expect_content)
+                support.write_file(results_file, data)
+                support.copy_file(results_file, expect_file)
+                actual_content = support.read_file(results_file)
+                expect_content = support.read_file(expect_file)
+                with self.query_context(query=query % increment):
+                    self.assertEqual(actual_content, expect_content)
 
     def test_increments_group_by(self):
         query = f"sql {self.db_name} format=table and stat=false and include=(power_plant_pv) SELECT increments(year, 1, timestamp), monitor_id, min(timestamp)::ljust(19) as min_ts, max(timestamp)::ljust(19) as max_ts, count(*) as row_count as row_count FROM power_plant GROUP BY monitor_id ORDER min_ts, monitor_id DESC"
@@ -209,22 +209,23 @@ class TestSQLCommands(unittest.TestCase):
 
     def test_period(self):
         for period in ['minute, 1, "2023-03-12 13:42:58"', 'hour, 12, "2026-01-01 00:00:00"', 'day, 30, "2024-02-15 20:18:29"']:
-            query = f"sql {self.db_name} format=table and stat=false SELECT timestamp, pv FROM power_plant_pv WHERE period({period}, timestamp) ORDER BY timestamp DESC"
-            fname = f"period_{period.strip().rsplit(',',1)[0].replace(' ', '').replace(',', '_')}.out"
+            with self.subTest(f"Period - {period}"):
+                query = f"sql {self.db_name} format=table and stat=false SELECT timestamp, pv FROM power_plant_pv WHERE period({period}, timestamp) ORDER BY timestamp DESC"
+                fname = f"period_{period.strip().rsplit(',',1)[0].replace(' ', '').replace(',', '_')}.out"
 
-            results_file = os.path.join(self.actual_dir, fname)
-            expect_file = os.path.join(self.expect_dir, fname)
+                results_file = os.path.join(self.actual_dir, fname)
+                expect_file = os.path.join(self.expect_dir, fname)
 
-            results = get_data(self.conn, query)
-            data = results.text
+                results = get_data(self.conn, query)
+                data = results.text
 
-            support.write_file(results_file, data)
-            support.copy_file(results_file, expect_file)
-            actual_content = support.read_file(results_file)
-            expect_content = support.read_file(expect_file)
+                support.write_file(results_file, data)
+                support.copy_file(results_file, expect_file)
+                actual_content = support.read_file(results_file)
+                expect_content = support.read_file(expect_file)
 
-            with self.query_context(query):
-                self.assertEqual(actual_content, expect_content)
+                with self.query_context(query):
+                    self.assertEqual(actual_content, expect_content)
 
     def test_period_and(self):
         # first 2 cases return empty set (expected) 

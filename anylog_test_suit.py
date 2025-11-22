@@ -93,6 +93,7 @@ def _validate_row_count(query_conn:str, db_name:str):
         else:
             time.sleep(30)
             index += 1
+
     return is_ready
 
 
@@ -180,6 +181,9 @@ def main():
         insert_data(conns=args.operator, db_name=args.db_name, sort_timestamps=args.sort_timestamps, batch=args.batch)
         flush_buffer(conn=args.operator)
 
+    print("Validate Data has been Insereted")
+    sys.stdout.flush()
+    time.sleep(0.5)
     is_ready = _validate_row_count(query_conn=args.query, db_name=args.db_name)
     if not is_ready:
         print(f"Issue with loaded data, cannot gurantee consistent results for testing, thus exiting")
